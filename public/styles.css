@@ -466,13 +466,6 @@ a {
     0 24px 60px rgba(60, 45, 26, 0.14);
 }
 
-.mind-node h3 {
-  margin: 10px 0 8px;
-  font-size: 31px;
-  line-height: 0.94;
-  letter-spacing: -0.04em;
-}
-
 .mind-node.trainer .badge.role {
   background: var(--violet-soft);
   color: var(--violet);
@@ -511,6 +504,29 @@ a {
   color: var(--muted);
 }
 
+.node-select {
+  appearance: none;
+  border: 0;
+  outline: none;
+  cursor: pointer;
+}
+
+.mind-node input,
+.mind-node textarea,
+.mind-node select {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  resize: none;
+  user-select: text;
+}
+
+.mind-node textarea {
+  overflow: hidden;
+}
+
 .node-route,
 .node-subtitle,
 .node-label {
@@ -521,6 +537,32 @@ a {
   color: var(--muted);
 }
 
+.node-input {
+  display: block;
+}
+
+.node-route-input,
+.node-subtitle-input {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.node-route-input {
+  margin-top: 10px;
+}
+
+.node-title-input {
+  margin: 10px 0 8px;
+  font-size: 31px;
+  font-weight: 800;
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  min-height: 78px;
+}
+
 .node-why {
   margin-top: 10px;
   padding: 12px;
@@ -528,11 +570,12 @@ a {
   background: rgba(34, 27, 22, 0.04);
 }
 
-.node-why p {
-  margin: 8px 0 0;
+.node-textarea {
+  margin-top: 8px;
   color: var(--ink);
   line-height: 1.45;
   font-size: 13px;
+  min-height: 74px;
 }
 
 .preview-card {
@@ -543,16 +586,10 @@ a {
   padding: 14px;
 }
 
-.preview-card strong {
-  display: block;
-  margin-top: 10px;
-  font-size: 28px;
-  line-height: 0.96;
-  letter-spacing: -0.03em;
-}
-
-.preview-chip {
+.preview-chip-input {
   display: inline-flex;
+  width: auto;
+  min-width: 84px;
   padding: 5px 10px;
   border-radius: 999px;
   background: rgba(106, 103, 245, 0.12);
@@ -562,6 +599,16 @@ a {
   text-transform: uppercase;
 }
 
+.preview-title-input {
+  display: block;
+  margin-top: 10px;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 0.96;
+  letter-spacing: -0.03em;
+  min-height: 58px;
+}
+
 .preview-lines {
   display: flex;
   flex-direction: column;
@@ -569,10 +616,16 @@ a {
   margin-top: 12px;
 }
 
-.preview-lines span {
-  height: 12px;
-  border-radius: 999px;
-  background: rgba(34, 27, 22, 0.06);
+.preview-details-input {
+  min-height: 78px;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+.mind-node input::placeholder,
+.mind-node textarea::placeholder {
+  color: rgba(115, 105, 95, 0.7);
 }
 
 .board-panel {

@@ -341,6 +341,7 @@ function renderBoard() {
   }
 
   const selected = getSelectedScreen();
+  const saveStatus = getSaveStatusMeta();
 
   app.innerHTML = `
     <main class="board-shell">
@@ -387,16 +388,8 @@ function renderBoard() {
                   </div>
                   <button class="icon-button" data-action="toggle-panel">×</button>
                 </div>
-                <div class="status-pill ${state.currentError ? "error" : state.saveState === "saving" ? "saving" : ""}">
-                  ${
-                    state.currentError
-                      ? escapeHtml(state.currentError)
-                      : state.saveState === "saving"
-                        ? "Сохраняю..."
-                        : state.lastSavedAt
-                          ? `Сохранено в ${formatTime(state.lastSavedAt)}`
-                          : "Все сохранено"
-                  }
+                <div class="${saveStatus.className}" data-role="save-status">
+                  ${escapeHtml(saveStatus.text)}
                 </div>
               </div>
 
@@ -577,24 +570,90 @@ function renderNode(screen) {
       style="left:${screen.x}px; top:${screen.y}px; width:${screen.width}px; min-height:${screen.height}px;"
     >
       <div class="node-badges">
-        <span class="badge role">${escapeHtml(capitalize(screen.role))}</span>
-        <span class="badge state">${escapeHtml(screen.state)}</span>
+        <select class="node-select badge role" data-screen-id="${screen.id}" data-screen-field="role" aria-label="Role">
+          ${["trainer", "client", "system"]
+            .map(
+              (role) =>
+                `<option value="${role}" ${screen.role === role ? "selected" : ""}>${capitalize(role)}</option>`,
+            )
+            .join("")}
+        </select>
+        <select class="node-select badge state" data-screen-id="${screen.id}" data-screen-field="state" aria-label="State">
+          ${["live", "production", "draft", "shared", "mock"]
+            .map(
+              (item) =>
+                `<option value="${item}" ${screen.state === item ? "selected" : ""}>${item}</option>`,
+            )
+            .join("")}
+        </select>
       </div>
-      <div class="node-route">${escapeHtml(screen.route)}</div>
-      <h3>${escapeHtml(screen.name)}</h3>
-      <div class="node-subtitle">${escapeHtml(screen.previewMeta || "SCREEN PREVIEW")}</div>
+      <input
+        class="node-input node-route-input"
+        data-screen-id="${screen.id}"
+        data-screen-field="route"
+        value="${escapeHtml(screen.route)}"
+        maxlength="120"
+        placeholder="/route"
+        aria-label="Route"
+      />
+      <textarea
+        class="node-input node-title-input"
+        data-screen-id="${screen.id}"
+        data-screen-field="name"
+        rows="2"
+        maxlength="80"
+        placeholder="Название экрана"
+        aria-label="Название экрана"
+      >${escapeHtml(screen.name)}</textarea>
+      <input
+        class="node-input node-subtitle-input"
+        data-screen-id="${screen.id}"
+        data-screen-field="previewMeta"
+        value="${escapeHtml(screen.previewMeta || "SCREEN PREVIEW")}"
+        maxlength="60"
+        placeholder="SCREEN PREVIEW"
+        aria-label="Preview meta"
+      />
       <div class="node-why">
         <div class="node-label">Зачем нужен экран</div>
-        <p>${escapeHtml(screen.why)}</p>
+        <textarea
+        class="node-input node-textarea"
+        data-screen-id="${screen.id}"
+        data-screen-field="why"
+        rows="4"
+        maxlength="320"
+        placeholder="Зачем нужен этот экран"
+        aria-label="Зачем нужен экран"
+        >${escapeHtml(screen.why)}</textarea>
       </div>
       <div class="preview-card">
-        <span class="preview-chip">${escapeHtml(screen.note || screen.state)}</span>
-        <strong>${escapeHtml(screen.previewTitle || screen.name)}</strong>
+        <input
+          class="node-input preview-chip-input"
+          data-screen-id="${screen.id}"
+          data-screen-field="note"
+          value="${escapeHtml(screen.note || screen.state)}"
+          maxlength="80"
+          placeholder="Live"
+          aria-label="Заметка"
+        />
+        <textarea
+        class="node-input preview-title-input"
+        data-screen-id="${screen.id}"
+        data-screen-field="previewTitle"
+        rows="2"
+        maxlength="80"
+        placeholder="Заголовок превью"
+        aria-label="Заголовок превью"
+        >${escapeHtml(screen.previewTitle || screen.name)}</textarea>
         <div class="preview-lines">
-          ${screen.details
-            .slice(0, 3)
-            .map((item) => `<span>${escapeHtml(item)}</span>`)
-            .join("")}
+          <textarea
+            class="node-input preview-details-input"
+            data-screen-id="${screen.id}"
+            data-screen-field="details"
+            rows="4"
+            placeholder="Каждая строка станет отдельным пунктом"
+            aria-label="Детали превью"
+          >${escapeHtml(screen.details.join("\n"))}</textarea>
         </div>
       </div>
     </article>
@@ -753,20 +812,15 @@ function bindBoardEvents() {
   const selected = getSelectedScreen();
   if (selected) {
     document.querySelectorAll("[data-field]").forEach((field) => {
-      field.addEventListener("change", (event) => {
-        const key = event.target.dataset.field;
-        const value =
-          key === "details"
-            ? event.target.value
-                .split("\n")
-                .map((item) => item.trim())
-                .filter(Boolean)
-                .slice(0, 6)
-            : event.target.value;
-        updateSelectedScreen({ [key]: value });
-      });
+      bindScreenField(field, state.selectedScreenId, field.dataset.field, { rerenderOnCommit: true });
     });
   }
+
+  document.querySelectorAll("[data-screen-field]").forEach((field) => {
+    bindScreenField(field, field.dataset.screenId, field.dataset.screenField, {
+      rerenderOnCommit: true,
+    });
+  });
 
   const viewport = document.querySelector("#board-viewport");
   viewport?.addEventListener(
@@ -867,13 +921,50 @@ function fitBoard() {
   renderBoard();
 }
 
-function updateSelectedScreen(patch) {
-  const selected = getSelectedScreen();
-  if (!selected) return;
+function bindScreenField(field, screenId, key, options = {}) {
+  if (!field || !screenId || !key) return;
+  const rerenderOnCommit = options.rerenderOnCommit ?? true;
 
-  Object.assign(selected, patch);
-  scheduleScreenSave(selected.id);
-  renderBoard();
+  if (field.tagName !== "SELECT") {
+    field.addEventListener("input", (event) => {
+      updateScreen(screenId, { [key]: parseScreenFieldValue(key, event.target.value) }, { render: false });
+    });
+  }
+
+  field.addEventListener("change", (event) => {
+    updateScreen(
+      screenId,
+      { [key]: parseScreenFieldValue(key, event.target.value) },
+      { render: rerenderOnCommit },
+    );
+  });
+}
+
+function parseScreenFieldValue(key, value) {
+  if (key === "details") {
+    return value
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+  }
+
+  return value;
+}
+
+function updateScreen(screenId, patch, options = {}) {
+  const screen = state.project?.screens.find((item) => item.id === screenId);
+  if (!screen) return;
+
+  Object.assign(screen, patch);
+  state.currentError = "";
+  state.saveState = "saving";
+  syncSaveStatus();
+  scheduleScreenSave(screen.id);
+
+  if (options.render) {
+    renderBoard();
+  }
 }
 
 async function addNode() {
@@ -950,6 +1041,7 @@ async function deleteConnection(connectionId) {
 async function saveConnections() {
   try {
     state.saveState = "saving";
+    syncSaveStatus();
     const { project } = await api(`/api/projects/${state.project.id}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -962,9 +1054,11 @@ async function saveConnections() {
     state.lastSavedAt = state.project.updatedAt;
     state.currentError = "";
     state.saveState = "saved";
+    syncSaveStatus();
   } catch (error) {
     state.currentError = error.message || "Не удалось сохранить связи";
     state.saveState = "error";
+    syncSaveStatus();
   }
 }
 
@@ -972,6 +1066,7 @@ function scheduleProjectSave() {
   clearTimeout(state.projectSaveTimer);
   state.saveState = "saving";
   state.currentError = "";
+  syncSaveStatus();
 
   state.projectSaveTimer = setTimeout(async () => {
     try {
@@ -987,10 +1082,12 @@ function scheduleProjectSave() {
       state.lastSavedAt = state.project.updatedAt;
       state.saveState = "saved";
       state.currentError = "";
+      syncSaveStatus();
       renderBoard();
     } catch (error) {
       state.currentError = error.message || "Не удалось сохранить проект";
       state.saveState = "error";
+      syncSaveStatus();
       renderBoard();
     }
   }, 450);
@@ -1029,11 +1126,17 @@ function scheduleScreenSave(screenId) {
       state.lastSavedAt = state.project.updatedAt;
       state.currentError = "";
       state.saveState = "saved";
-      renderBoard();
+      syncSaveStatus();
+      if (!document.activeElement?.closest("[data-screen-field], [data-field]")) {
+        renderBoard();
+      }
     } catch (error) {
       state.currentError = error.message || "Не удалось сохранить экран";
       state.saveState = "error";
-      renderBoard();
+      syncSaveStatus();
+      if (!document.activeElement?.closest("[data-screen-field], [data-field]")) {
+        renderBoard();
+      }
     }
   }, 300);
 
@@ -1078,6 +1181,35 @@ function cleanupEventStream() {
 function setAuthorName(value) {
   state.authorName = value.trim() || "Guest";
   localStorage.setItem("screen-studio-author", state.authorName);
+}
+
+function getSaveStatusMeta() {
+  if (state.currentError) {
+    return {
+      text: state.currentError,
+      className: "status-pill error",
+    };
+  }
+
+  if (state.saveState === "saving") {
+    return {
+      text: "Сохраняю...",
+      className: "status-pill saving",
+    };
+  }
+
+  return {
+    text: state.lastSavedAt ? `Сохранено в ${formatTime(state.lastSavedAt)}` : "Все сохранено",
+    className: "status-pill",
+  };
+}
+
+function syncSaveStatus() {
+  const pill = document.querySelector('[data-role="save-status"]');
+  if (!pill) return;
+  const meta = getSaveStatusMeta();
+  pill.className = meta.className;
+  pill.textContent = meta.text;
 }
 
 function renderNotFound() {
