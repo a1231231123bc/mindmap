@@ -1,0 +1,12 @@
+services:
+  screen-studio:
+    build: .
+    container_name: screen-studio
+    ports:
+      - "3010:3010"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3010
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

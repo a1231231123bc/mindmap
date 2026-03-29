@@ -1,0 +1,50 @@
+{
+  "projects": [
+    {
+      "id": "b29612be-1e79-41d6-9f7a-87357b394fcc",
+      "slug": "landing-review-66wl9",
+      "name": "Landing review",
+      "description": "Экран для совместного ревью",
+      "createdAt": "2026-03-29T15:50:37.382Z",
+      "updatedAt": "2026-03-29T16:14:36.192Z",
+      "screens": [
+        {
+          "id": "4c51f604-f001-40f8-8ff8-9e868504c9d6",
+          "name": "Hero screen",
+          "viewport": "desktop",
+          "width": 1180,
+          "palette": "lagoon",
+          "updatedAt": "2026-03-29T16:14:36.192Z",
+          "updatedBy": "Pavel",
+          "blocks": [
+            {
+              "id": "6d522c5c-d46c-4d29-ac9b-0368fd041a61",
+              "type": "hero",
+              "eyebrow": "Landing",
+              "title": "Новый оффер",
+              "body": "Совместно собираем экран",
+              "primaryAction": "Запустить",
+              "secondaryAction": "Показать flow",
+              "note": "Главный блок",
+              "align": "left",
+              "items": [
+                "Живой room",
+                "Комментарии",
+                "Ссылка для команды"
+              ]
+            }
+          ]
+        }
+      ],
+      "comments": [
+        {
+          "id": "a670094d-be6c-4aab-990c-323d1980033f",
+          "screenId": "4c51f604-f001-40f8-8ff8-9e868504c9d6",
+          "authorName": "Nadya",
+          "body": "CTA стал понятнее, но второй action можно упростить",
+          "createdAt": "2026-03-29T16:14:35.225Z"
+        }
+      ]
+    }
+  ]
+}
