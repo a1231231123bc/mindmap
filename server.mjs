@@ -598,10 +598,6 @@ const server = createServer(async (request, response) => {
 
     const projectPageMatch = pathname.match(/^\/p\/([^/]+)$/);
     if (request.method === "GET" && projectPageMatch) {
-      const store = await readStore();
-      if (!getProjectBySlug(store, projectPageMatch[1])) {
-        return sendJson(response, 404, { error: "Project not found" });
-      }
       return serveAppShell(response);
     }
 
