@@ -1,0 +1,60 @@
+name: Deploy To VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync Project To Server
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude "data/projects.json" \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.DEPLOY_PORT }} -o IdentitiesOnly=yes" \
+            ./ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+
+      - name: Restart Service
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "${{ secrets.DEPLOY_PORT }}" -o IdentitiesOnly=yes "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" '
+            set -e
+            mkdir -p "${{ secrets.DEPLOY_PATH }}/data"
+            if [ ! -f "${{ secrets.DEPLOY_PATH }}/data/projects.json" ]; then
+              printf "{\n  \"projects\": []\n}\n" > "${{ secrets.DEPLOY_PATH }}/data/projects.json"
+            fi
+            chown -R root:root "${{ secrets.DEPLOY_PATH }}"
+            cd "${{ secrets.DEPLOY_PATH }}"
+            docker compose up -d --build --remove-orphans
+          '
+
+      - name: Health Check
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 10 --retry-delay 3 "http://${{ secrets.DEPLOY_HOST }}:3010/health"

@@ -39,6 +39,25 @@ docker compose down
 
 `./data` примонтирована в контейнер как volume, поэтому проекты сохраняются между рестартами.
 
+## GitHub Autodeploy
+
+В репозитории предусмотрен workflow `.github/workflows/deploy.yml`.
+
+Он на каждом `push` в `main`:
+
+- синхронизирует код на VPS через `rsync`
+- не перезаписывает `data/projects.json`
+- выполняет `docker compose up -d --build --remove-orphans`
+- проверяет `/health`
+
+Нужные GitHub Secrets:
+
+- `DEPLOY_HOST`
+- `DEPLOY_PORT`
+- `DEPLOY_USER`
+- `DEPLOY_PATH`
+- `DEPLOY_SSH_KEY`
+
 ## Как устроено
 
 - `server.mjs` — HTTP API, выдача статики, SSE-канал
