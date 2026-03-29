@@ -141,27 +141,192 @@ function createBlock(type, overrides = {}) {
   return { ...templates[type], ...overrides };
 }
 
-function createScreen(name = "Главный экран", viewport = "desktop") {
+function createScreen(config = {}) {
   const createdAt = nowIso();
   return {
     id: randomUUID(),
-    name,
-    viewport,
-    width: viewportPresets[viewport] || viewportPresets.desktop,
-    palette: "ember",
+    name: config.name || "Главный экран",
+    route: config.route || "/",
+    role: config.role || "trainer",
+    state: config.state || "live",
+    group: config.group || "core",
+    x: Number(config.x ?? 120),
+    y: Number(config.y ?? 120),
+    width: Number(config.width ?? 300),
+    height: Number(config.height ?? 220),
+    previewTitle: config.previewTitle || config.name || "Главный экран",
+    previewMeta: config.previewMeta || "SCREEN PREVIEW",
+    note: config.note || "",
+    why: config.why || "Ключевой экран в пользовательском потоке.",
+    details: Array.isArray(config.details)
+      ? config.details.slice(0, 6)
+      : ["Основной сценарий", "Переход к следующему узлу"],
+    viewport: config.viewport || "desktop",
+    palette: config.palette || "ember",
     updatedAt: createdAt,
-    updatedBy: "System",
-    blocks: [
-      createBlock("hero"),
-      createBlock("stats"),
-      createBlock("featureGrid"),
-      createBlock("cta"),
-    ],
+    updatedBy: config.updatedBy || "System",
+    blocks: Array.isArray(config.blocks)
+      ? config.blocks
+      : [
+          createBlock("hero"),
+          createBlock("stats"),
+          createBlock("featureGrid"),
+          createBlock("cta"),
+        ],
   };
+}
+
+function createConnection(fromScreenId, toScreenId, label, color = "violet") {
+  return {
+    id: randomUUID(),
+    fromScreenId,
+    toScreenId,
+    label,
+    color,
+  };
+}
+
+function createStarterBoard() {
+  const screens = [
+    createScreen({
+      name: "Мои клиенты",
+      route: "/trainer",
+      role: "trainer",
+      state: "live",
+      group: "trainer",
+      x: 220,
+      y: 260,
+      previewTitle: "My Clients",
+      previewMeta: "MY CLIENTS",
+      why: "Точка входа тренера. Отсюда открывается каталог, клиенты и рабочие ветки.",
+      details: ["Общий список клиентов", "Переход к карточке клиента", "Старт для ветки тренера"],
+    }),
+    createScreen({
+      name: "Панель клиента",
+      route: "/trainer/client/:slug",
+      role: "trainer",
+      state: "production",
+      group: "trainer",
+      x: 560,
+      y: 260,
+      previewTitle: "Панель клиента",
+      previewMeta: "CLIENT DASHBOARD",
+      why: "Здесь тренер видит текущие рабочие веса, историю и может собрать новую программу.",
+      details: ["Контекст клиента", "Известные упражнения", "Переход в конструктор"],
+    }),
+    createScreen({
+      name: "Создание тренировки",
+      route: "/trainer/client/:slug/workout/new",
+      role: "trainer",
+      state: "production",
+      group: "trainer",
+      x: 900,
+      y: 260,
+      previewTitle: "New Workout",
+      previewMeta: "WORKOUT BUILDER",
+      why: "Конструктор новой программы и точка входа AI-builder.",
+      details: ["Редактор упражнений", "AI workout builder", "Переход в сохранение"],
+    }),
+    createScreen({
+      name: "AI-чат тренера",
+      route: "/trainer/chat",
+      role: "trainer",
+      state: "live",
+      group: "trainer",
+      x: 1200,
+      y: 180,
+      previewTitle: "AI Chat тренера",
+      previewMeta: "TRAINER AI CHAT",
+      why: "Отдельный assistant для обсуждения программ и состава тренировки.",
+      details: ["Контекст клиента", "Итерации плана", "Возврат в конструктор"],
+    }),
+    createScreen({
+      name: "Planned Workout Saved",
+      route: "POST /api/clients/:slug/workouts",
+      role: "system",
+      state: "shared",
+      group: "shared",
+      x: 1500,
+      y: 250,
+      previewTitle: "Planned Workout Saved",
+      previewMeta: "PERSISTENCE / HANDOFF",
+      why: "Центральный handoff: после сохранения тренировки она становится доступна клиенту.",
+      details: ["Запись в store", "Связь тренер → клиент", "Источник клиентского потока"],
+    }),
+    createScreen({
+      name: "Главная клиента",
+      route: "/client/:slug",
+      role: "client",
+      state: "live",
+      group: "client",
+      x: 1500,
+      y: 640,
+      previewTitle: "My Workouts",
+      previewMeta: "CLIENT HOME",
+      why: "Основная точка клиента: planned, in-progress и completed тренировки.",
+      details: ["Список тренировок", "Resume/Start", "Навигация в историю и чат"],
+    }),
+    createScreen({
+      name: "Мастер тренировки",
+      route: "/client/:slug/workout/:id",
+      role: "client",
+      state: "live",
+      group: "client",
+      x: 1500,
+      y: 920,
+      previewTitle: "Workout Wizard",
+      previewMeta: "EXECUTION FLOW",
+      why: "Основной execution flow: карточки упражнений, лог сетов и финальный summary.",
+      details: ["Карточки", "Set logging", "Complete workout"],
+    }),
+    createScreen({
+      name: "Прогресс и история",
+      route: "/client/:slug/progress",
+      role: "client",
+      state: "production",
+      group: "client",
+      x: 1180,
+      y: 1280,
+      previewTitle: "Progress & History",
+      previewMeta: "PROGRESS",
+      why: "История завершенных тренировок и визуализация прогресса.",
+      details: ["Workout history", "Прогресс по весам", "Петля возврата в планирование"],
+    }),
+    createScreen({
+      name: "Чат с AI-тренером",
+      route: "/client/:slug/chat",
+      role: "client",
+      state: "live",
+      group: "client",
+      x: 1840,
+      y: 680,
+      previewTitle: "AI Coach",
+      previewMeta: "CLIENT AI CHAT",
+      why: "Использует completed workouts и client context для ответов о прогрессе.",
+      details: ["История тренировок", "Рекомендации", "Вопросы по прогрессу"],
+    }),
+  ];
+
+  const byName = Object.fromEntries(screens.map((screen) => [screen.name, screen.id]));
+
+  const connections = [
+    createConnection(byName["Мои клиенты"], byName["Панель клиента"], "выбор клиента", "violet"),
+    createConnection(byName["Панель клиента"], byName["Создание тренировки"], "create new", "violet"),
+    createConnection(byName["Создание тренировки"], byName["AI-чат тренера"], "ai route", "violet"),
+    createConnection(byName["Создание тренировки"], byName["Planned Workout Saved"], "save", "gray"),
+    createConnection(byName["AI-чат тренера"], byName["Planned Workout Saved"], "handoff", "gray"),
+    createConnection(byName["Planned Workout Saved"], byName["Главная клиента"], "доступно клиенту", "orange"),
+    createConnection(byName["Главная клиента"], byName["Мастер тренировки"], "start", "mint"),
+    createConnection(byName["Главная клиента"], byName["Чат с AI-тренером"], "chat", "mint"),
+    createConnection(byName["Мастер тренировки"], byName["Прогресс и история"], "complete → history", "orange"),
+  ];
+
+  return { screens, connections };
 }
 
 function createProject(name, description = defaultProjectDescription) {
   const createdAt = nowIso();
+  const starterBoard = createStarterBoard();
   return {
     id: randomUUID(),
     slug: `${slugify(name)}-${Math.random().toString(36).slice(2, 7)}`,
@@ -169,7 +334,8 @@ function createProject(name, description = defaultProjectDescription) {
     description,
     createdAt,
     updatedAt: createdAt,
-    screens: [createScreen()],
+    screens: starterBoard.screens,
+    connections: starterBoard.connections,
     comments: [],
   };
 }
@@ -321,8 +487,60 @@ function sanitizeScreenPatch(payload) {
     patch.palette = sanitizeString(payload.palette) || "ember";
   }
 
+  if (payload.route !== undefined) {
+    patch.route = sanitizeString(payload.route).slice(0, 120) || "/";
+  }
+
+  if (payload.role !== undefined) {
+    patch.role = sanitizeString(payload.role).slice(0, 24) || "client";
+  }
+
+  if (payload.state !== undefined) {
+    patch.state = sanitizeString(payload.state).slice(0, 24) || "draft";
+  }
+
+  if (payload.group !== undefined) {
+    patch.group = sanitizeString(payload.group).slice(0, 24) || "core";
+  }
+
+  if (payload.previewTitle !== undefined) {
+    patch.previewTitle = sanitizeString(payload.previewTitle).slice(0, 80) || "";
+  }
+
+  if (payload.previewMeta !== undefined) {
+    patch.previewMeta = sanitizeString(payload.previewMeta).slice(0, 60) || "";
+  }
+
+  if (payload.note !== undefined) {
+    patch.note = sanitizeString(payload.note).slice(0, 80) || "";
+  }
+
+  if (payload.why !== undefined) {
+    patch.why = sanitizeString(payload.why).slice(0, 320) || "";
+  }
+
+  if (payload.x !== undefined) {
+    patch.x = Number(payload.x) || 0;
+  }
+
+  if (payload.y !== undefined) {
+    patch.y = Number(payload.y) || 0;
+  }
+
+  if (payload.width !== undefined) {
+    patch.width = Math.max(240, Number(payload.width) || 300);
+  }
+
+  if (payload.height !== undefined) {
+    patch.height = Math.max(180, Number(payload.height) || 220);
+  }
+
   if (payload.updatedBy !== undefined) {
     patch.updatedBy = sanitizeString(payload.updatedBy).slice(0, 32) || "Guest";
+  }
+
+  if (payload.details !== undefined) {
+    patch.details = sanitizeItems(payload.details);
   }
 
   if (payload.blocks !== undefined) {
@@ -332,6 +550,27 @@ function sanitizeScreenPatch(payload) {
   }
 
   return patch;
+}
+
+function sanitizeConnections(value, availableScreenIds) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => ({
+      id: sanitizeString(item?.id) || randomUUID(),
+      fromScreenId: sanitizeString(item?.fromScreenId),
+      toScreenId: sanitizeString(item?.toScreenId),
+      label: sanitizeString(item?.label).slice(0, 80),
+      color: sanitizeString(item?.color).slice(0, 24) || "violet",
+    }))
+    .filter(
+      (item) =>
+        item.fromScreenId &&
+        item.toScreenId &&
+        availableScreenIds.has(item.fromScreenId) &&
+        availableScreenIds.has(item.toScreenId),
+    )
+    .slice(0, 80);
 }
 
 async function serveStaticFile(requestPath, response) {
@@ -465,6 +704,11 @@ const server = createServer(async (request, response) => {
           });
         }
 
+        if (body.connections !== undefined) {
+          const availableScreenIds = new Set(existingProject.screens.map((screen) => screen.id));
+          existingProject.connections = sanitizeConnections(body.connections, availableScreenIds);
+        }
+
         existingProject.updatedAt = nowIso();
         return existingProject;
       });
@@ -485,11 +729,23 @@ const server = createServer(async (request, response) => {
 
       const project = await mutateStore(async (store) => {
         const existingProject = getProjectOrThrow(store, projectId);
-        const screen = createScreen(
-          sanitizeString(body.name).slice(0, 80) || `Экран ${existingProject.screens.length + 1}`,
-          sanitizeString(body.viewport) || "desktop",
-        );
-        screen.updatedBy = sanitizeString(body.updatedBy).slice(0, 32) || "Guest";
+        const screen = createScreen({
+          name: sanitizeString(body.name).slice(0, 80) || `Экран ${existingProject.screens.length + 1}`,
+          viewport: sanitizeString(body.viewport) || "desktop",
+          updatedBy: sanitizeString(body.updatedBy).slice(0, 32) || "Guest",
+          x: Number(body.x ?? 240 + existingProject.screens.length * 120),
+          y: Number(body.y ?? 240 + existingProject.screens.length * 80),
+          route: sanitizeString(body.route) || "/new-screen",
+          role: sanitizeString(body.role) || "client",
+          state: sanitizeString(body.state) || "draft",
+          group: sanitizeString(body.group) || "core",
+          previewTitle: sanitizeString(body.previewTitle) || "New Screen",
+          previewMeta: sanitizeString(body.previewMeta) || "SCREEN PREVIEW",
+          why: sanitizeString(body.why) || "Новый узел на mindmap-доске.",
+          details: sanitizeItems(body.details).length
+            ? sanitizeItems(body.details)
+            : ["Новый экран", "Заполни описание и связи"],
+        });
         existingProject.screens.push(screen);
         existingProject.updatedAt = nowIso();
         return existingProject;
@@ -544,6 +800,10 @@ const server = createServer(async (request, response) => {
         }
 
         existingProject.screens = existingProject.screens.filter((screen) => screen.id !== screenId);
+        existingProject.connections = (existingProject.connections || []).filter(
+          (connection) =>
+            connection.fromScreenId !== screenId && connection.toScreenId !== screenId,
+        );
         existingProject.comments = existingProject.comments.filter(
           (comment) => comment.screenId !== screenId,
         );
